@@ -1,0 +1,36 @@
+name: CI
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      trigger:
+        description: Type m to triggre manual jobs
+        required: false
+        default: ''
+env:
+  JAVA_VERSION: '17'
+jobs:
+  tests:
+    if: github.event.inputs.trigger == ''
+      || !startsWith(github.event.inputs.trigger, 'm')
+      || !startsWith(github.event.inputs.trigger, 'M')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: java-cache
+        with:
+          path: |
+            ~/.m2/repository
+            !~/.m2/repository/com/gituhb/daggerok
+          key: ${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+      - run: cd $GITHUB_WORKSPACE ; ./mvnw clean ; ./mvnw package spring-boot:build-image
+      - run: docker run -e BPL_JAVA_NMT_ENABLED=false daggerok/spring-boot-build-image:0.0.1-SNAPSHOT one two three
+      - run: docker run -e BPL_JAVA_NMT_LEVEL=off     daggerok/spring-boot-build-image:0.0.1-SNAPSHOT Maksimko
+      - run: docker run                               daggerok/spring-boot-build-image:0.0.1-SNAPSHOT
